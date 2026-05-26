@@ -7,15 +7,12 @@ jobs:
   export:
     runs-on: ubuntu-latest
 
+    container:
+      image: kicad/kicad:10.0
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install KiCad
-        run: |
-          sudo add-apt-repository --yes ppa:kicad/kicad-8.0-releases
-          sudo apt update
-          sudo apt install -y kicad
 
       - name: Check KiCad
         run: kicad-cli version
