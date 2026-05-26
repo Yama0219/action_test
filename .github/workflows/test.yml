@@ -36,6 +36,12 @@ jobs:
             hardware/auto_test/auto_test.kicad_sch \
             --output output/schematic.pdf
 
+      - name: Export schematic PDF
+        run: |
+          kicad-cli-nightly sch export pdf \
+            hardware/auto_test/auto_test.kicad_sch \
+            --output output/schematic.png
+
       - name: Export PCB PDF
         continue-on-error: true
         run: |
@@ -43,6 +49,12 @@ jobs:
             --layers F.Cu,B.Cu,F.SilkS,Edge.Cuts \
             hardware/auto_test/auto_test.kicad_pcb \
             --output output/pcb.pdf
+
+      - name: Render PCB PNG
+        run: |
+          kicad-cli-nightly pcb render \
+            hardware/auto_test/auto_test.kicad_pcb \
+            --output docs/pcb.png
 
       - name: Upload outputs
         uses: actions/upload-artifact@v4
@@ -52,12 +64,6 @@ jobs:
 
       - name: Create docs directory
         run: mkdir -p docs
-
-      - name: Render PCB PNG
-        run: |
-          kicad-cli-nightly pcb render \
-            hardware/auto_test/auto_test.kicad_pcb \
-            --output docs/pcb.png
       
       - name: Commit generated images
         run: |

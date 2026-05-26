@@ -1,5 +1,7 @@
 # auto_test
 
-## PCB
+## SCHEMATIC
+![SCHEMATIC](docs/schematic.png)
 
+## PCB
 ![PCB](docs/pcb.png)
