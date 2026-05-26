@@ -1,13 +1,23 @@
 # auto_test
 
-## SCHEMATIC
-![SCHEMATIC](docs/schematic.png)
+これは手動記述。
 
-## PCB
-![PCB](docs/pcb.png)
+---
 
-# PCB Preview
+<!-- AUTO_GENERATED_START -->
 
-![PCB](https://raw.githubusercontent.com/Yama0219/action_test/generated/docs/pcb.png)
+## Auto Generated Preview
 
-[schematic.pdf](https://raw.githubusercontent.com/Yama0219/action_test/generated/output/schematic.pdf)
+### PCB
+
+![PCB](...)
+
+### Schematic
+
+![SCH](...)
+
+<!-- AUTO_GENERATED_END -->
+
+---
+
+ここも手動記述。
