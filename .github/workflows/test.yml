@@ -1,14 +1,15 @@
-name: test
+name: Export KiCad Outputs
 
 on:
   push:
 
 jobs:
-  hello:
+  export:
     runs-on: ubuntu-latest
 
     steps:
-
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Install KiCad
         run: |
@@ -19,6 +20,23 @@ jobs:
       - name: Check KiCad
         run: kicad-cli version
 
-      - uses: actions/checkout@v6.0.1
+      - name: Create output directory
+        run: mkdir output
+
+      - name: Export schematic PDF
+        run: |
+          kicad-cli sch export pdf \
+            hardware/auto_test/auto_test.kicad_sch \
+            --output output/schematic.pdf
+
+      - name: Export PCB PDF
+        run: |
+          kicad-cli pcb export pdf \
+            hardware/auto_test/auto_test.kicad_pcb \
+            --output output/pcb.pdf
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
         with:
-          persist-credentials: false
+          name: kicad-output
+          path: output/
