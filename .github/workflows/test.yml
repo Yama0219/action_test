@@ -7,15 +7,21 @@ jobs:
   export:
     runs-on: ubuntu-latest
 
-    container:
-      image: kicad/kicad:10.0
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install KiCad 9
+        run: |
+          sudo add-apt-repository --yes ppa:kicad/kicad-dev-nightly
+          sudo apt update
+          sudo apt install -y kicad-nightly
+
       - name: Check KiCad
         run: kicad-cli version
+
+      - name: Show files
+        run: find .
 
       - name: Create output directory
         run: mkdir output
