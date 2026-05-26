@@ -11,11 +11,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install KiCad 9
+      - name: Install KiCad
         run: |
           sudo add-apt-repository --yes ppa:kicad/kicad-dev-nightly
           sudo apt update
           sudo apt install -y kicad-nightly
+
+      - name: Check installed binaries
+        run: |
+          ls /usr/bin | grep kicad
 
       - name: Check KiCad
         run: kicad-cli version
