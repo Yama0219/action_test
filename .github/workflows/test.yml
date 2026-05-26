@@ -8,8 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+
 
       - name: Install KiCad
         run: |
@@ -19,3 +18,6 @@ jobs:
 
       - name: Check KiCad
         run: kicad-cli version
+
+      - name: Checkout
+        uses: actions/checkout@v4
