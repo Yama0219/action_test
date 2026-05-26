@@ -13,7 +13,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install KiCad nightly
@@ -23,6 +23,7 @@ jobs:
           sudo apt install -y kicad-nightly imagemagick
 
       - name: Detect KiCad project
+        shell: bash
         run: |
           PROJ=$(find . -maxdepth 1 -name "*.kicad_pro" | head -n 1)
 
@@ -35,22 +36,25 @@ jobs:
 
           echo "PROJECT_NAME=$BASENAME" >> $GITHUB_ENV
 
-      - name: Show detected project
-        run: |
-          echo "PROJECT_NAME=${PROJECT_NAME}"
-
-      - name: Check KiCad
-        run: |
-          kicad-cli-nightly version
-
       - name: Set branch name
         run: |
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
+      - name: Debug info
+        run: |
+          echo "PROJECT_NAME=${PROJECT_NAME}"
+          echo "BRANCH_NAME=${BRANCH_NAME}"
+          pwd
+          ls -la
+
+      - name: Check KiCad version
+        run: |
+          kicad-cli-nightly version
+
       - name: Create output directories
         run: |
           mkdir -p output
-          mkdir -p generated/${BRANCH_NAME}
+          mkdir -p artifacts/${BRANCH_NAME}
 
       - name: Export schematic PDF
         run: |
@@ -62,7 +66,7 @@ jobs:
         run: |
           convert -density 300 \
             output/schematic.pdf[0] \
-            generated/${BRANCH_NAME}/schematic.png
+            artifacts/${BRANCH_NAME}/schematic.png
 
       - name: Export PCB PDF
         run: |
@@ -76,46 +80,44 @@ jobs:
           kicad-cli-nightly pcb render \
             --width 2000 \
             ${PROJECT_NAME}.kicad_pcb \
-            --output generated/${BRANCH_NAME}/pcb.png
+            --output artifacts/${BRANCH_NAME}/pcb.png
 
       - name: Copy PDFs
         run: |
-          cp output/*.pdf generated/${BRANCH_NAME}/
-
-      - name: Generate README section
-        run: |
-          cat > generated_section.md <<EOF
-          ## Auto Generated Preview
-
-          Branch: \`${BRANCH_NAME}\`
-
-          ### PCB
-
-          ![PCB](https://raw.githubusercontent.com/${{ github.repository }}/generated/${BRANCH_NAME}/pcb.png)
-
-          ### Schematic
-
-          ![Schematic](https://raw.githubusercontent.com/${{ github.repository }}/generated/${BRANCH_NAME}/schematic.png)
-
-          ### Downloads
-
-          - [PCB PDF](https://raw.githubusercontent.com/${{ github.repository }}/generated/${BRANCH_NAME}/pcb.pdf)
-          - [Schematic PDF](https://raw.githubusercontent.com/${{ github.repository }}/generated/${BRANCH_NAME}/schematic.pdf)
-
-          EOF
+          cp output/*.pdf artifacts/${BRANCH_NAME}/
 
       - name: Ensure README exists
+        shell: bash
         run: |
           if [ ! -f README.md ]; then
-            cat > README.md <<EOF
-            # ${PROJECT_NAME}
-
-            <!-- AUTO_GENERATED_START -->
-            <!-- AUTO_GENERATED_END -->
-          EOF
+            printf '# %s\n\n<!-- AUTO_GENERATED_START -->\n<!-- AUTO_GENERATED_END -->\n' \
+              "${PROJECT_NAME}" > README.md
           fi
 
+      - name: Generate README section
+        shell: bash
+        run: |
+          {
+            echo "## Auto Generated Preview"
+            echo
+            echo "Current branch: \`${BRANCH_NAME}\`"
+            echo
+            echo "### PCB"
+            echo
+            echo "![PCB](https://raw.githubusercontent.com/${{ github.repository }}/generated-files/${BRANCH_NAME}/pcb.png)"
+            echo
+            echo "### Schematic"
+            echo
+            echo "![Schematic](https://raw.githubusercontent.com/${{ github.repository }}/generated-files/${BRANCH_NAME}/schematic.png)"
+            echo
+            echo "### Downloads"
+            echo
+            echo "- [PCB PDF](https://raw.githubusercontent.com/${{ github.repository }}/generated-files/${BRANCH_NAME}/pcb.pdf)"
+            echo "- [Schematic PDF](https://raw.githubusercontent.com/${{ github.repository }}/generated-files/${BRANCH_NAME}/schematic.pdf)"
+          } > generated_section.md
+
       - name: Update README
+        shell: bash
         run: |
           awk '
             BEGIN {p=1}
@@ -133,39 +135,50 @@ jobs:
 
           mv README.new README.md
 
-      - name: Prepare generated branch
+      - name: Prepare generated-files branch
+        shell: bash
         run: |
-          git fetch origin generated || true
+          git fetch origin generated-files || true
 
-          if git show-ref --verify --quiet refs/remotes/origin/generated; then
-            echo "generated branch exists"
+          if git show-ref --verify --quiet refs/remotes/origin/generated-files; then
+            echo "generated-files branch exists"
           else
-            git checkout --orphan generated
+            git checkout --orphan generated-files
+
             git rm -rf . || true
-            echo "# generated" > README.md
+
+            echo "# generated-files" > README.md
+
             git add README.md
-            git commit -m "init generated branch"
-            git push origin generated
-            git checkout ${BRANCH_NAME}
+
+            git config --global user.name "github-actions"
+            git config --global user.email "github-actions@github.com"
+
+            git commit -m "Initialize generated-files branch"
+
+            git push origin generated-files
+
+            git checkout "${BRANCH_NAME}"
           fi
 
       - name: Push generated files
+        shell: bash
         run: |
           ORIGINAL_MSG="${{ github.event.head_commit.message }}"
           SHA="${GITHUB_SHA::7}"
 
-          mkdir -p /tmp/generated
+          mkdir -p /tmp/generated-files
 
-          cp -r generated/* /tmp/generated/
-          cp README.md /tmp/generated/
+          cp -r artifacts/* /tmp/generated-files/
+          cp README.md /tmp/generated-files/
 
-          git fetch origin generated
+          git fetch origin generated-files
 
-          git checkout generated
+          git checkout generated-files
 
           git rm -rf . || true
 
-          cp -r /tmp/generated/* .
+          cp -r /tmp/generated-files/* .
 
           git add .
 
@@ -174,4 +187,10 @@ jobs:
 
           git commit -m "Auto update (${SHA}): ${ORIGINAL_MSG} [skip ci]" || echo "No changes"
 
-          git push origin generated
+          git push origin generated-files
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kicad-output
+          path: artifacts/
