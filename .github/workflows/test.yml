@@ -65,17 +65,27 @@ jobs:
       - name: Create docs directory
         run: mkdir -p docs
       
-      - name: Commit generated images
+      - name: Push generated files
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
-          git add docs/pcb.png
-
           ORIGINAL_MSG="${{ github.event.head_commit.message }}"
-
           SHA="${GITHUB_SHA::7}"
 
-          git commit -m "Auto update PCB image (${SHA}): ${ORIGINAL_MSG} [skip ci]"
+          mkdir -p /tmp/generated
+          cp -r docs /tmp/generated/
 
-          git push
+          git fetch origin generated
+
+          git switch --orphan generated-tmp
+
+          git rm -rf . || true
+
+          cp -r /tmp/generated/* .
+
+          git add .
+
+          git commit -m "Auto update (${SHA}): ${ORIGINAL_MSG} [skip ci]" || echo "No changes"
+
+          git push origin HEAD:generated --force
