@@ -49,3 +49,27 @@ jobs:
         with:
           name: kicad-output
           path: output/
+
+      - name: Create docs directory
+        run: mkdir -p docs
+
+      - name: Render PCB PNG
+        run: |
+          kicad-cli-nightly pcb render \
+            hardware/auto_test/auto_test.kicad_pcb \
+            --output docs/pcb.png
+      
+      - name: Commit generated images
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          git add docs/pcb.png
+
+          ORIGINAL_MSG="${{ github.event.head_commit.message }}"
+
+          SHA="${GITHUB_SHA::7}"
+
+          git commit -m "Auto update PCB image (${SHA}): ${ORIGINAL_MSG} [skip ci]"
+
+          git push
