@@ -52,11 +52,11 @@ jobs:
             hardware/auto_test/auto_test.kicad_sch \
             --output output/schematic.pdf
 
-      - name: Export schematic SVG
+      - name: Export schematic PNG
         run: |
-          kicad-cli-nightly sch export svg \
+          kicad-cli-nightly sch export png \
             auto_test.kicad_sch \
-            --output schematic.svg
+            --output schematic.png
 
       - name: Export PCB PDF
         continue-on-error: true
