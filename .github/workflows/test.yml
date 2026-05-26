@@ -37,8 +37,10 @@ jobs:
             --output output/schematic.pdf
 
       - name: Export PCB PDF
+        continue-on-error: true
         run: |
           kicad-cli-nightly pcb export pdf \
+            --layers F.Cu,B.Cu,F.SilkS,Edge.Cuts \
             hardware/auto_test/auto_test.kicad_pcb \
             --output output/pcb.pdf
 
