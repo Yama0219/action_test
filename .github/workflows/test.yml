@@ -9,3 +9,6 @@ jobs:
 
     steps:
       - run: echo "hello"
+
+      - name: Check KiCad
+        run: kicad-cli version
