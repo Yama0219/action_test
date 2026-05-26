@@ -170,8 +170,7 @@ jobs:
           mkdir -p /tmp/generated-files
 
           cp -r artifacts/* /tmp/generated-files/
-          cp README.md /tmp/generated-files/
-
+          
           git fetch origin generated-files
 
           git checkout generated-files
