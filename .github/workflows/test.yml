@@ -22,7 +22,7 @@ jobs:
           ls /usr/bin | grep kicad
 
       - name: Check KiCad
-        run: kicad-cli version
+        run: kicad-cli-nightly version
 
       - name: Show files
         run: find .
@@ -32,13 +32,13 @@ jobs:
 
       - name: Export schematic PDF
         run: |
-          kicad-cli sch export pdf \
+          kicad-cli-nightly sch export pdf \
             hardware/auto_test/auto_test.kicad_sch \
             --output output/schematic.pdf
 
       - name: Export PCB PDF
         run: |
-          kicad-cli pcb export pdf \
+          kicad-cli-nightly pcb export pdf \
             hardware/auto_test/auto_test.kicad_pcb \
             --output output/pcb.pdf
 
