@@ -103,6 +103,7 @@ jobs:
           - [Schematic PDF](https://raw.githubusercontent.com/${{ github.repository }}/generated/${BRANCH_NAME}/schematic.pdf)
 
           EOF
+
       - name: Ensure README exists
         run: |
           if [ ! -f README.md ]; then
@@ -111,7 +112,7 @@ jobs:
 
             <!-- AUTO_GENERATED_START -->
             <!-- AUTO_GENERATED_END -->
-            EOF
+          EOF
           fi
 
       - name: Update README
