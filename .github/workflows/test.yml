@@ -5,106 +5,104 @@ on:
 
 jobs:
   export:
+    if: github.actor != 'github-actions[bot]'
+
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare generated branch
-        run: |
-          git fetch origin generated || true
-
-          if git show-ref --verify --quiet refs/remotes/origin/generated; then
-            echo "generated branch exists"
-          else
-            git checkout --orphan generated
-            git rm -rf . || true
-            echo "# generated" > README.md
-            git add README.md
-            git commit -m "init generated branch"
-            git push origin generated
-            git checkout ${{ github.ref_name }}
-          fi
-              
-      - name: Install KiCad
+      - name: Install KiCad nightly
         run: |
           sudo add-apt-repository --yes ppa:kicad/kicad-dev-nightly
           sudo apt update
-          sudo apt install -y kicad-nightly
+          sudo apt install -y kicad-nightly imagemagick
 
-      - name: Check installed binaries
+      - name: Detect KiCad project
         run: |
-          ls /usr/bin | grep kicad
+          PROJ=$(find . -maxdepth 1 -name "*.kicad_pro" | head -n 1)
+
+          if [ -z "$PROJ" ]; then
+            echo "No KiCad project found"
+            exit 1
+          fi
+
+          BASENAME=$(basename "$PROJ" .kicad_pro)
+
+          echo "PROJECT_NAME=$BASENAME" >> $GITHUB_ENV
+
+      - name: Show detected project
+        run: |
+          echo "PROJECT_NAME=${PROJECT_NAME}"
 
       - name: Check KiCad
-        run: kicad-cli-nightly version
+        run: |
+          kicad-cli-nightly version
 
-      - name: Show files
-        run: find .
+      - name: Set branch name
+        run: |
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-      - name: Create output directory
-        run: mkdir output
+      - name: Create output directories
+        run: |
+          mkdir -p output
+          mkdir -p generated/${BRANCH_NAME}
 
       - name: Export schematic PDF
         run: |
           kicad-cli-nightly sch export pdf \
-            hardware/auto_test/auto_test.kicad_sch \
+            ${PROJECT_NAME}.kicad_sch \
             --output output/schematic.pdf
 
-      - name: Export schematic PNG
+      - name: Convert schematic PDF to PNG
         run: |
-          kicad-cli-nightly sch export png \
-            auto_test.kicad_sch \
-            --output schematic.png
+          convert -density 300 \
+            output/schematic.pdf[0] \
+            generated/${BRANCH_NAME}/schematic.png
 
       - name: Export PCB PDF
-        continue-on-error: true
         run: |
           kicad-cli-nightly pcb export pdf \
             --layers F.Cu,B.Cu,F.SilkS,Edge.Cuts \
-            hardware/auto_test/auto_test.kicad_pcb \
+            ${PROJECT_NAME}.kicad_pcb \
             --output output/pcb.pdf
 
       - name: Render PCB PNG
         run: |
           kicad-cli-nightly pcb render \
-            hardware/auto_test/auto_test.kicad_pcb \
-            --output docs/pcb.png
+            --width 2000 \
+            ${PROJECT_NAME}.kicad_pcb \
+            --output generated/${BRANCH_NAME}/pcb.png
 
-      - name: Upload outputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: kicad-output
-          path: output/
-
-      - name: Create docs directory
-        run: mkdir -p docs
-      
-      - name: Push generated files
+      - name: Copy PDFs
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          cp output/*.pdf generated/${BRANCH_NAME}/
 
-          ORIGINAL_MSG="${{ github.event.head_commit.message }}"
-          SHA="${GITHUB_SHA::7}"
+      - name: Generate README section
+        run: |
+          cat > generated_section.md <<EOF
+          ## Auto Generated Preview
 
-          mkdir -p /tmp/generated
-          cp -r docs /tmp/generated/
+          Branch: \`${BRANCH_NAME}\`
 
-          git fetch origin generated
+          ### PCB
 
-          git switch --orphan generated-tmp
+          ![PCB](https://raw.githubusercontent.com/${{ github.repository }}/generated/${BRANCH_NAME}/pcb.png)
 
-          git rm -rf . || true
+          ### Schematic
 
-          cp -r /tmp/generated/* .
+          ![Schematic](https://raw.githubusercontent.com/${{ github.repository }}/generated/${BRANCH_NAME}/schematic.png)
 
-          git add .
+          ### Downloads
 
-          git commit -m "Auto update (${SHA}): ${ORIGINAL_MSG} [skip ci]" || echo "No changes"
+          - [PCB PDF](https://raw.githubusercontent.com/${{ github.repository }}/generated/${BRANCH_NAME}/pcb.pdf)
+          - [Schematic PDF](https://raw.githubusercontent.com/${{ github.repository }}/generated/${BRANCH_NAME}/schematic.pdf)
 
-          git push origin HEAD:generated --force
+          EOF
 
       - name: Update README
         run: |
@@ -123,3 +121,46 @@ jobs:
           ' README.md > README.new
 
           mv README.new README.md
+
+      - name: Prepare generated branch
+        run: |
+          git fetch origin generated || true
+
+          if git show-ref --verify --quiet refs/remotes/origin/generated; then
+            echo "generated branch exists"
+          else
+            git checkout --orphan generated
+            git rm -rf . || true
+            echo "# generated" > README.md
+            git add README.md
+            git commit -m "init generated branch"
+            git push origin generated
+            git checkout ${BRANCH_NAME}
+          fi
+
+      - name: Push generated files
+        run: |
+          ORIGINAL_MSG="${{ github.event.head_commit.message }}"
+          SHA="${GITHUB_SHA::7}"
+
+          mkdir -p /tmp/generated
+
+          cp -r generated/* /tmp/generated/
+          cp README.md /tmp/generated/
+
+          git fetch origin generated
+
+          git checkout generated
+
+          git rm -rf . || true
+
+          cp -r /tmp/generated/* .
+
+          git add .
+
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          git commit -m "Auto update (${SHA}): ${ORIGINAL_MSG} [skip ci]" || echo "No changes"
+
+          git push origin generated
